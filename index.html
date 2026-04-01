@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pretext DevTools — Measurement Overlay Demo</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0d1a;
+      --surface:  #141428;
+      --surface2: #1e1e3a;
+      --border:   #2e2e5a;
+      --text:     #e2e2f0;
+      --muted:    #888aaa;
+      --accent:   #6366f1;
+      --accent2:  #818cf8;
+      --good:     #4ade80;
+      --warn:     #facc15;
+      --bad:      #f87171;
+      --radius:   10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ───────────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #141428 0%, #1a1a3a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 0 40px;
+    }
+
+    .header-inner { display: flex; flex-direction: column; gap: 16px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.35);
+      color: var(--accent2); font-size: 12px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; width: fit-content;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 46px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    h1 span { color: var(--accent2); }
+
+    .tagline {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 560px;
+    }
+
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); text-decoration: none; }
+    .btn-ghost {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); text-decoration: none; }
+
+    /* ── Bookmarklet section ──────────────────────────────────────────── */
+    .bookmarklet-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin: 32px 0;
+    }
+
+    .bookmarklet-section h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .bookmarklet-section p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .bookmarklet-drag-area {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    #bookmarklet-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      padding: 10px 18px;
+      color: var(--accent2);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: grab;
+      transition: border-color 0.2s, background 0.2s;
+      text-decoration: none;
+      user-select: none;
+    }
+
+    #bookmarklet-link:hover {
+      background: rgba(99,102,241,0.12);
+      border-color: var(--accent2);
+      text-decoration: none;
+    }
+
+    .drag-hint {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .drag-hint strong { color: var(--text); }
+
+    /* ── Demo section ─────────────────────────────────────────────────── */
+    .demo-section { padding: 40px 0; }
+
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .section-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .section-subhead {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .demo-instructions {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 14px;
+      color: var(--accent2);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Toggle button (in-page, not the overlay one) */
+    #demo-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      margin-bottom: 28px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      transition: all 0.2s;
+      width: fit-content;
+    }
+    #demo-toggle:hover { border-color: var(--accent); }
+    #demo-toggle.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .toggle-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--muted); transition: background 0.2s;
+    }
+    #demo-toggle.active .toggle-dot { background: #fff; }
+
+    /* ── Sample cards ─────────────────────────────────────────────────── */
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .demo-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .demo-card:hover { border-color: var(--accent); }
+
+    .demo-card .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* Various typography examples */
+    .sample-h1 { font-size: 32px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; }
+    .sample-h2 { font-size: 22px; font-weight: 700; line-height: 1.3; }
+    .sample-body { font-size: 15px; line-height: 1.65; }
+    .sample-small { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .sample-mono  { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+    .sample-bold  { font-size: 16px; font-weight: 900; letter-spacing: 0.05em; }
+    .sample-nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+    .sample-overflow { overflow: hidden; height: 52px; font-size: 14px; line-height: 1.5; }
+    .sample-tracking { letter-spacing: 0.15em; font-size: 14px; font-weight: 600; text-transform: uppercase; }
+
+    .overflow-indicator {
+      font-size: 11px;
+      color: var(--bad);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* ── What is Pretext ──────────────────────────────────────────────── */
+    .about-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin: 40px 0;
+    }
+
+    .about-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .about-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .about-item .ai-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--accent2); margin-bottom: 6px;
+    }
+    .about-item p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* ── How it works ─────────────────────────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+
+    .step {
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(99,102,241,0.2); border: 1px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--accent2);
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-body { font-size: 14px; }
+    .step-body strong { color: var(--text); }
+    .step-body span   { color: var(--muted); }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 0;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent2); }
+
+    /* ── Overlay styles (injected by JS) ──────────────────────────────── */
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="badge">
+        <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#4ade80"/></svg>
+        @shipitandpray/pretext-devtools
+      </div>
+      <h1>See <span>exactly</span> why your<br>text breaks.</h1>
+      <p class="tagline">
+        Hover any element to compare the Pretext-predicted width &amp; height
+        against what the browser actually rendered — live, on any page.
+      </p>
+      <div class="cta-row">
+        <a href="https://github.com/ShipItAndPray/pretext-devtools" class="btn btn-primary">
+          GitHub
+        </a>
+        <a href="https://www.npmjs.com/package/@shipitandpray/pretext-devtools" class="btn btn-ghost">
+          npm
+        </a>
+        <a href="#demo" class="btn btn-ghost">
+          Try the demo ↓
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════ BOOKMARKLET ══════════════════════════════ -->
+<div class="container">
+  <div class="bookmarklet-section">
+    <h2>Use on any page — drag to your bookmarks bar</h2>
+    <p>
+      No extension required. Drag the button below to your browser's bookmarks bar.
+      Click it on any page to toggle the measurement overlay.
+    </p>
+    <div class="bookmarklet-drag-area">
+      <!-- The href is set by JS below so it stays maintainable -->
+      <a id="bookmarklet-link" href="#" onclick="return false;" title="Drag me to your bookmarks bar">
+        ⊹ Pretext DevTools
+      </a>
+      <p class="drag-hint">
+        <strong>Drag</strong> the button above to your bookmarks bar,
+        then click it on any page to inspect text measurements.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ DEMO ═════════════════════════════════ -->
+<div class="container demo-section" id="demo">
+  <div class="section-header">
+    <h2>Live Demo</h2>
+  </div>
+  <p class="section-subhead">
+    Toggle the overlay, then hover any element below to see Pretext measurements.
+    The panel shows predicted vs actual dimensions, match %, and overflow detection.
+  </p>
+
+  <div class="demo-instructions">
+    <span>&#9432;</span>
+    Hover an element below after enabling the overlay. The floating panel
+    updates in real time.
+  </div>
+
+  <button id="demo-toggle">
+    <span class="toggle-dot"></span>
+    Enable Pretext DevTools Overlay
+  </button>
+
+  <!-- ─── Sample elements grid ─────────────────────────────────────── -->
+  <div class="demo-grid">
+
+    <div class="demo-card">
+      <div class="card-label">Display Heading</div>
+      <p class="sample-h1">The quick brown fox</p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Section Heading</div>
+      <h2 class="sample-h2">Subheading with regular weight</h2>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Body Copy</div>
+      <p class="sample-body">
+        Typography is the art and technique of arranging type to make written
+        language legible, readable and appealing when displayed.
+      </p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Small / Caption</div>
+      <p class="sample-small">
+        Last updated March 2026 · Version 0.1.0 · MIT License
+        See changelog for details on recent updates and breaking changes.
+      </p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Monospace / Code</div>
+      <p class="sample-mono">const x = measureElement(el);</p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Heavy Weight</div>
+      <p class="sample-bold">SHIP IT AND PRAY</p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">No-wrap + Ellipsis (overflow)</div>
+      <p class="sample-nowrap">This is a very long string that should be clipped by white-space nowrap and text-overflow ellipsis</p>
+      <div class="overflow-indicator">overflow: hidden · nowrap</div>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Height-Clipped (hidden overflow)</div>
+      <p class="sample-overflow">
+        This text block is artificially height-constrained to 52 px with
+        overflow:hidden so the bottom lines are clipped and invisible to
+        the reader even though they exist in the DOM.
+      </p>
+      <div class="overflow-indicator">overflow: hidden · fixed height</div>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Wide Letter-Spacing</div>
+      <p class="sample-tracking">Tracking Demo Text</p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Mixed inline spans</div>
+      <p class="sample-body">
+        Text with <span style="font-weight:700;">bold fragments</span> and
+        <span style="color:#818cf8;font-style:italic;">italic accents</span>
+        mixed in the flow.
+      </p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Large Font Size</div>
+      <p style="font-size:48px;font-weight:800;line-height:1.1;letter-spacing:-0.03em;">Aa</p>
+    </div>
+
+    <div class="demo-card">
+      <div class="card-label">Tiny Font</div>
+      <p style="font-size:9px;line-height:1.4;color:var(--muted);">
+        Legal: This product is provided as-is without warranty of any kind
+        express or implied including but not limited to warranties of
+        merchantability fitness for purpose and non-infringement.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ ABOUT / HOW ══════════════════════════════ -->
+<div class="container">
+  <div class="about-section">
+    <h2>What is Pretext?</h2>
+    <p style="color:var(--muted);font-size:14px;line-height:1.6;">
+      <strong style="color:var(--text)">Pretext</strong> is the idea that, given a
+      font stack, size, weight, letter-spacing, and a string of characters, you can
+      <em>predict</em> the rendered pixel dimensions before layout happens — using
+      nothing but the browser's Canvas 2D
+      <code style="font-family:monospace;color:var(--accent2)">measureText()</code> API.
+      Pretext DevTools exposes those predictions live so you can spot mismatches,
+      overflow, and clipping at a glance.
+    </p>
+
+    <div class="about-grid">
+      <div class="about-item">
+        <div class="ai-label">Predicted Width</div>
+        <p>Canvas measureText() + letter-spacing correction across the full character run.</p>
+      </div>
+      <div class="about-item">
+        <div class="ai-label">Predicted Height</div>
+        <p>Resolved line-height × estimated line count (word-wrap aware).</p>
+      </div>
+      <div class="about-item">
+        <div class="ai-label">Match %</div>
+        <p>100% = canvas prediction matches getBoundingClientRect exactly. Lower = font hinting diverged.</p>
+      </div>
+      <div class="about-item">
+        <div class="ai-label">Overflow / Clipped</div>
+        <p>Compares scrollWidth/Height to clientWidth/Height. Marks CLIPPED when overflow:hidden hides content.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <h3 style="font-size:17px;font-weight:700;margin-bottom:4px;">How it works</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Hover event</strong>
+            <span>— mousemove fires and we grab the target element.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>getComputedStyle()</strong>
+            <span>— reads the exact font stack, weight, size, line-height, letter-spacing.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Canvas measureText()</strong>
+            <span>— predicts width; resolveLineHeight() × estimateLineCount() predicts height.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>getBoundingClientRect()</strong>
+            <span>— reads the actual rendered dimensions.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Overlay panel</strong>
+            <span>— renders delta, match %, and overflow badge next to your cursor.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ FOOTER ══════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <p>
+      Built by <a href="https://github.com/ShipItAndPray">ShipItAndPray</a> ·
+      <a href="https://github.com/ShipItAndPray/pretext-devtools">GitHub</a> ·
+      <a href="https://www.npmjs.com/package/@shipitandpray/pretext-devtools">npm</a> ·
+      MIT License
+    </p>
+  </div>
+</footer>
+
+<!-- ════════════════════════ INLINE JS ═══════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // ── Colour palette ────────────────────────────────────────────────────
+  var C = {
+    bg:     '#1a1a2e', border: '#4a4a7a', text: '#e2e2f0',
+    label:  '#888aaa', val:    '#c9d1f0',
+    good:   '#4ade80', warn:   '#facc15', bad:  '#f87171',
+    hl:     'rgba(99,102,241,0.25)', accent: '#6366f1', off: '#333355',
+  };
+
+  // ── Canvas singleton ──────────────────────────────────────────────────
+  var cvs = document.createElement('canvas');
+  var ctx = cvs.getContext('2d');
+
+  function parsePx(v) {
+    var n = parseFloat(v);
+    return isNaN(n) ? NaN : n;
+  }
+
+  function resolveLineHeight(s) {
+    var lh = s.lineHeight, fs = parsePx(s.fontSize) || 16;
+    if (lh === 'normal') return fs * 1.2;
+    var px = parsePx(lh);
+    if (!isNaN(px) && px > 0) return px;
+    var raw = parseFloat(lh);
+    return (!isNaN(raw) && raw > 0) ? fs * raw : fs * 1.2;
+  }
+
+  function estimateLines(text, cw) {
+    if (cw <= 0) return 1;
+    var words = text.split(/\s+/), lines = 1, lw = 0;
+    var sw = ctx.measureText(' ').width;
+    for (var i = 0; i < words.length; i++) {
+      var ww = ctx.measureText(words[i]).width;
+      if (lw > 0 && lw + sw + ww > cw) { lines++; lw = ww; }
+      else { lw = lw > 0 ? lw + sw + ww : ww; }
+    }
+    return lines;
+  }
+
+  function measureEl(el) {
+    var s   = window.getComputedStyle(el);
+    var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    var r   = el.getBoundingClientRect();
+    var aw  = r.width, ah = r.height;
+    var cw  = el.parentElement ? el.parentElement.scrollWidth : aw;
+
+    if (ctx) {
+      ctx.font = (s.fontWeight || 'normal') + ' ' + (s.fontSize || '16px') + ' ' + (s.fontFamily || 'sans-serif');
+    }
+    var lsPx   = parsePx(s.letterSpacing);
+    var baseW  = (txt.length && ctx) ? ctx.measureText(txt).width : 0;
+    var extraW = isNaN(lsPx) ? 0 : lsPx * Math.max(0, txt.length - 1);
+    var pw     = txt.length ? baseW + extraW : aw;
+    var lh     = resolveLineHeight(s);
+    var lines  = (s.whiteSpace === 'nowrap' || !txt.length)
+      ? 1
+      : estimateLines(txt, cw);
+    var ph = txt.length ? lh * lines : ah;
+
+    var wDelta = aw - pw, hDelta = ah - ph;
+    var wPct   = pw > 0 ? Math.max(0, Math.min(100, 100 - (Math.abs(wDelta) / pw)  * 100)) : 100;
+    var hPct   = ph > 0 ? Math.max(0, Math.min(100, 100 - (Math.abs(hDelta) / ph)  * 100)) : 100;
+
+    var sw2   = el.scrollWidth  || aw;
+    var sh2   = el.scrollHeight || ah;
+    var wOvf  = sw2 > Math.ceil(aw) + 1;
+    var hOvf  = sh2 > Math.ceil(ah) + 1;
+    var ov    = s.overflow;
+    var clipped = (ov === 'hidden' || ov === 'clip') && (wOvf || hOvf);
+
+    return {
+      txt: txt, pw: rnd(pw), ph: rnd(ph), aw: rnd(aw), ah: rnd(ah),
+      wPct: rnd1(wPct), hPct: rnd1(hPct),
+      wOvf: wOvf, hOvf: hOvf, clipped: clipped,
+      fontFamily: s.fontFamily, fontSize: s.fontSize, fontWeight: s.fontWeight,
+      lineHeight: s.lineHeight, letterSpacing: s.letterSpacing,
+      whiteSpace: s.whiteSpace, overflow: ov,
+    };
+  }
+
+  function rnd(n)  { return Math.round(n * 100) / 100; }
+  function rnd1(n) { return Math.round(n * 10)  / 10;  }
+
+  // ── Selector path ─────────────────────────────────────────────────────
+  function selPath(el, depth) {
+    depth = depth || 4;
+    var parts = [], c = el;
+    for (var i = 0; i < depth && c && c !== document.body; i++) {
+      var s = c.tagName.toLowerCase();
+      if (c.id) { s += '#' + c.id; }
+      else if (c.className && typeof c.className === 'string') {
+        var cls = c.className.trim().split(/\s+/).slice(0, 2).join('.');
+        if (cls) s += '.' + cls;
+      }
+      parts.unshift(s);
+      c = c.parentElement;
+    }
+    return parts.join(' > ') || el.tagName.toLowerCase();
+  }
+
+  // ── HTML helpers ──────────────────────────────────────────────────────
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function trunc(s, n) { return s.length > n ? s.slice(0, n-1) + '…' : s; }
+  function mColor(pct) { return pct >= 90 ? C.good : pct >= 70 ? C.warn : C.bad; }
+
+  function tr(label, value, color) {
+    return '<tr><td style="color:' + C.label + ';padding:2px 8px 2px 0;white-space:nowrap;font-size:11px;">' + label + '</td>'
+         + '<td style="color:' + color + ';padding:2px 0;font-size:11px;font-family:monospace;">' + value + '</td></tr>';
+  }
+
+  function renderPanel(el) {
+    var m   = measureEl(el);
+    var tag = el.tagName.toLowerCase();
+    var cls = typeof el.className === 'string' ? el.className.trim().split(/\s+/).slice(0,2).join('.') : '';
+    var txt = m.txt.length > 40 ? m.txt.slice(0,37)+'…' : m.txt || '(empty)';
+    var badge = m.clipped
+      ? '<span style="background:' + C.bad  + ';color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;">CLIPPED</span>'
+      : (m.wOvf || m.hOvf)
+      ? '<span style="background:' + C.warn + ';color:#000;padding:1px 6px;border-radius:3px;font-size:10px;">OVERFLOW</span>'
+      : '<span style="background:' + C.good + ';color:#000;padding:1px 6px;border-radius:3px;font-size:10px;">OK</span>';
+
+    return '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;line-height:1.4;">'
+      + '<div style="font-size:12px;font-weight:600;color:' + C.text + ';margin-bottom:6px;display:flex;align-items:center;gap:6px;">'
+      + '<span>&lt;' + tag + '&gt;</span>'
+      + (cls ? '<span style="font-size:10px;color:' + C.label + '">.' + esc(cls) + '</span>' : '')
+      + badge
+      + '</div>'
+      + '<div style="font-size:10px;color:' + C.label + ';margin-bottom:8px;font-family:monospace;word-break:break-all;">&quot;' + esc(txt) + '&quot;</div>'
+
+      + '<div style="font-size:10px;font-weight:700;color:' + C.label + ';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Dimensions</div>'
+      + '<table style="border-collapse:collapse;width:100%;margin-bottom:8px;">'
+      + tr('Predicted W', m.pw + 'px', C.val)
+      + tr('Actual W',    m.aw + 'px', C.val)
+      + tr('W match',     m.wPct + '%', mColor(m.wPct))
+      + tr('Predicted H', m.ph + 'px', C.val)
+      + tr('Actual H',    m.ah + 'px', C.val)
+      + tr('H match',     m.hPct + '%', mColor(m.hPct))
+      + '</table>'
+
+      + '<div style="font-size:10px;font-weight:700;color:' + C.label + ';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Typography</div>'
+      + '<table style="border-collapse:collapse;width:100%;">'
+      + tr('Font',    trunc(m.fontFamily, 22), C.val)
+      + tr('Size',    m.fontSize,    C.val)
+      + tr('Weight',  m.fontWeight,  C.val)
+      + tr('Line-H',  m.lineHeight,  C.val)
+      + tr('Spacing', m.letterSpacing, C.val)
+      + tr('WS',      m.whiteSpace,  C.val)
+      + tr('Overflow',m.overflow,    C.val)
+      + '</table>'
+
+      + '<div style="margin-top:8px;font-size:10px;color:' + C.label + ';border-top:1px solid ' + C.border + ';padding-top:6px;font-family:monospace;word-break:break-all;">'
+      + esc(selPath(el))
+      + '</div></div>';
+  }
+
+  // ── Overlay elements ──────────────────────────────────────────────────
+  var panel = document.createElement('div');
+  Object.assign(panel.style, {
+    position:'fixed', zIndex:'2147483647',
+    background: C.bg, border:'1px solid ' + C.border,
+    borderRadius:'8px', padding:'12px 14px',
+    minWidth:'240px', maxWidth:'300px',
+    boxShadow:'0 8px 32px rgba(0,0,0,.45)',
+    pointerEvents:'none', display:'none', color: C.text,
+  });
+  document.body.appendChild(panel);
+
+  var hl = document.createElement('div');
+  Object.assign(hl.style, {
+    position:'fixed', zIndex:'2147483646',
+    border:'2px solid ' + C.accent, background: C.hl,
+    borderRadius:'2px', pointerEvents:'none', display:'none',
+    transition:'all 0.05s ease',
+  });
+  document.body.appendChild(hl);
+
+  // ── State ─────────────────────────────────────────────────────────────
+  var overlayActive = false;
+  var lastTarget = null;
+
+  // ── In-page toggle button ─────────────────────────────────────────────
+  var toggleBtn = document.getElementById('demo-toggle');
+
+  function setActive(on) {
+    overlayActive = on;
+    if (!on) {
+      panel.style.display = 'none';
+      hl.style.display    = 'none';
+      lastTarget = null;
+    }
+    if (toggleBtn) {
+      toggleBtn.className  = on ? 'active' : '';
+      toggleBtn.querySelector('.toggle-dot').style.background = on ? '#fff' : '';
+      toggleBtn.childNodes[toggleBtn.childNodes.length - 1].textContent
+        = ' ' + (on ? 'Disable' : 'Enable') + ' Pretext DevTools Overlay';
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+      setActive(!overlayActive);
+    });
+  }
+
+  // ── Mouse tracking ────────────────────────────────────────────────────
+  document.addEventListener('mousemove', function (e) {
+    if (!overlayActive) return;
+    var t = e.target;
+    if (!t || t === panel || panel.contains(t) || t === hl) return;
+    if (t === lastTarget) return;
+    lastTarget = t;
+
+    var r = t.getBoundingClientRect();
+    Object.assign(hl.style, {
+      top: r.top + 'px', left: r.left + 'px',
+      width: r.width + 'px', height: r.height + 'px',
+      display: 'block',
+    });
+
+    panel.innerHTML = renderPanel(t);
+
+    var OFFSET = 16, PW = 300, PH = 360;
+    var left = e.clientX + OFFSET, top = e.clientY + OFFSET;
+    if (left + PW > window.innerWidth  - 8) left = e.clientX - PW - OFFSET;
+    if (top  + PH > window.innerHeight - 8) top  = e.clientY - PH - OFFSET;
+    if (left < 8) left = 8;
+    if (top  < 8) top  = 8;
+    Object.assign(panel.style, {
+      left: left + 'px', top: top + 'px', display: 'block',
+    });
+  }, { passive: true });
+
+  document.addEventListener('mouseleave', function () {
+    panel.style.display = 'none';
+    hl.style.display    = 'none';
+    lastTarget = null;
+  }, { passive: true });
+
+  // ── Bookmarklet link ──────────────────────────────────────────────────
+  // Inline the self-contained bookmarklet as the href so it's drag-installable.
+  var bookmarkletCode = "(function(){'use strict';var SENTINEL='__pretextDevtoolsLoaded__';var win=window;if(win[SENTINEL]){var state=win[SENTINEL];state.active=!state.active;if(!state.active){if(state.panelEl)state.panelEl.style.display='none';if(state.highlightEl)state.highlightEl.style.display='none';}updateBtn(state);return;}var C={bg:'#1a1a2e',border:'#4a4a7a',text:'#e2e2f0',label:'#888aaa',val:'#c9d1f0',good:'#4ade80',warn:'#facc15',bad:'#f87171',hl:'rgba(99,102,241,0.25)',accent:'#6366f1',off:'#333355'};var cvs=document.createElement('canvas');var ctx=cvs.getContext('2d');function parsePx(v){var n=parseFloat(v);return isNaN(n)?NaN:n;}function resolveLineHeight(s){var lh=s.lineHeight,fs=parsePx(s.fontSize)||16;if(lh==='normal')return fs*1.2;var px=parsePx(lh);if(!isNaN(px)&&px>0)return px;var raw=parseFloat(lh);return(!isNaN(raw)&&raw>0)?fs*raw:fs*1.2;}function estimateLines(text,cw){if(cw<=0)return 1;var words=text.split(/\\s+/),lines=1,lw=0,sw=ctx.measureText(' ').width;for(var i=0;i<words.length;i++){var ww=ctx.measureText(words[i]).width;if(lw>0&&lw+sw+ww>cw){lines++;lw=ww;}else{lw=lw>0?lw+sw+ww:ww;}}return lines;}function measure(el){var s=window.getComputedStyle(el),txt=(el.textContent||'').replace(/\\s+/g,' ').trim(),r=el.getBoundingClientRect(),aw=r.width,ah=r.height,cw=el.parentElement?el.parentElement.scrollWidth:aw;ctx.font=(s.fontWeight||'normal')+' '+(s.fontSize||'16px')+' '+(s.fontFamily||'sans-serif');var lsPx=parsePx(s.letterSpacing),baseW=txt.length?ctx.measureText(txt).width:0,extraW=isNaN(lsPx)?0:lsPx*Math.max(0,txt.length-1),pw=txt.length?baseW+extraW:aw,lh=resolveLineHeight(s),lines=(s.whiteSpace==='nowrap'||!txt.length)?1:estimateLines(txt,cw),ph=txt.length?lh*lines:ah,wDelta=aw-pw,hDelta=ah-ph,wPct=pw>0?Math.max(0,Math.min(100,100-(Math.abs(wDelta)/pw)*100)):100,hPct=ph>0?Math.max(0,Math.min(100,100-(Math.abs(hDelta)/ph)*100)):100,sw2=el.scrollWidth||aw,sh2=el.scrollHeight||ah,wOvf=sw2>Math.ceil(aw)+1,hOvf=sh2>Math.ceil(ah)+1,ov=s.overflow,clipped=(ov==='hidden'||ov==='clip')&&(wOvf||hOvf);return{txt:txt,pw:Math.round(pw*100)/100,ph:Math.round(ph*100)/100,aw:Math.round(aw*100)/100,ah:Math.round(ah*100)/100,wPct:Math.round(wPct*10)/10,hPct:Math.round(hPct*10)/10,wOvf:wOvf,hOvf:hOvf,clipped:clipped,fontFamily:s.fontFamily,fontSize:s.fontSize,fontWeight:s.fontWeight,lineHeight:s.lineHeight,letterSpacing:s.letterSpacing,whiteSpace:s.whiteSpace,overflow:ov};}function sel(el,d){d=d||4;var p=[],c=el;for(var i=0;i<d&&c&&c!==document.body;i++){var s=c.tagName.toLowerCase();if(c.id){s+='#'+c.id;}else if(c.className&&typeof c.className==='string'){var cls=c.className.trim().split(/\\s+/).slice(0,2).join('.');if(cls)s+='.'+cls;}p.unshift(s);c=c.parentElement;}return p.join(' > ')||el.tagName.toLowerCase();}function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}function trunc(s,n){return s.length>n?s.slice(0,n-1)+'\\u2026':s;}function mc(p){return p>=90?C.good:p>=70?C.warn:C.bad;}function tr(l,v,c){return '<tr><td style=\"color:'+C.label+';padding:2px 8px 2px 0;white-space:nowrap;font-size:11px;\">'+l+'</td><td style=\"color:'+c+';padding:2px 0;font-size:11px;font-family:monospace;\">'+v+'</td></tr>';}function rp(el){var m=measure(el),tag=el.tagName.toLowerCase(),cls=typeof el.className==='string'?el.className.trim().split(/\\s+/).slice(0,2).join('.'):'' ,txt=m.txt.length>40?m.txt.slice(0,37)+'\\u2026':m.txt||'(empty)',badge=m.clipped?'<span style=\"background:'+C.bad+';color:#fff;padding:1px 6px;border-radius:3px;font-size:10px;\">CLIPPED</span>':(m.wOvf||m.hOvf)?'<span style=\"background:'+C.warn+';color:#000;padding:1px 6px;border-radius:3px;font-size:10px;\">OVERFLOW</span>':'<span style=\"background:'+C.good+';color:#000;padding:1px 6px;border-radius:3px;font-size:10px;\">OK</span>';return '<div style=\"font-family:-apple-system,sans-serif;line-height:1.4;\"><div style=\"font-size:12px;font-weight:600;color:'+C.text+';margin-bottom:6px;display:flex;align-items:center;gap:6px;\"><span>&lt;'+tag+'&gt;</span>'+(cls?'<span style=\"font-size:10px;color:'+C.label+'\">.'+esc(cls)+'</span>':'')+badge+'</div><div style=\"font-size:10px;color:'+C.label+';margin-bottom:8px;font-family:monospace;word-break:break-all;\">&quot;'+esc(txt)+'&quot;</div><div style=\"font-size:10px;font-weight:700;color:'+C.label+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;\">Dimensions</div><table style=\"border-collapse:collapse;width:100%;margin-bottom:8px;\">'+tr('Predicted W',m.pw+'px',C.val)+tr('Actual W',m.aw+'px',C.val)+tr('W match',m.wPct+'%',mc(m.wPct))+tr('Predicted H',m.ph+'px',C.val)+tr('Actual H',m.ah+'px',C.val)+tr('H match',m.hPct+'%',mc(m.hPct))+'</table><div style=\"font-size:10px;font-weight:700;color:'+C.label+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;\">Typography</div><table style=\"border-collapse:collapse;width:100%;\">'+tr('Font',trunc(m.fontFamily,22),C.val)+tr('Size',m.fontSize,C.val)+tr('Weight',m.fontWeight,C.val)+tr('Line-H',m.lineHeight,C.val)+tr('Spacing',m.letterSpacing,C.val)+tr('WS',m.whiteSpace,C.val)+tr('Overflow',m.overflow,C.val)+'</table><div style=\"margin-top:8px;font-size:10px;color:'+C.label+';border-top:1px solid '+C.border+';padding-top:6px;font-family:monospace;word-break:break-all;\">'+esc(sel(el))+'</div></div>';}var panel=document.createElement('div');Object.assign(panel.style,{position:'fixed',zIndex:'2147483647',background:C.bg,border:'1px solid '+C.border,borderRadius:'8px',padding:'12px 14px',minWidth:'240px',maxWidth:'300px',boxShadow:'0 8px 32px rgba(0,0,0,.45)',pointerEvents:'none',display:'none',color:C.text});document.body.appendChild(panel);var hl=document.createElement('div');Object.assign(hl.style,{position:'fixed',zIndex:'2147483646',border:'2px solid '+C.accent,background:C.hl,borderRadius:'2px',pointerEvents:'none',display:'none'});document.body.appendChild(hl);var btn=document.createElement('button');Object.assign(btn.style,{position:'fixed',bottom:'20px',right:'20px',zIndex:'2147483647',padding:'8px 16px',borderRadius:'6px',border:'none',cursor:'pointer',fontFamily:'sans-serif',fontSize:'13px',fontWeight:'600',boxShadow:'0 4px 16px rgba(0,0,0,.3)',transition:'background .2s'});document.body.appendChild(btn);var state={active:true,panelEl:panel,highlightEl:hl};win[SENTINEL]=state;updateBtn(state);function updateBtn(s){btn.textContent='Pretext: '+(s.active?'ON \u2713':'OFF');btn.style.background=s.active?C.accent:C.off;btn.style.color='#fff';}btn.addEventListener('click',function(){state.active=!state.active;if(!state.active){panel.style.display='none';hl.style.display='none';}updateBtn(state);});var last=null;document.addEventListener('mousemove',function(e){if(!state.active)return;var t=e.target;if(!t||t===panel||panel.contains(t))return;if(t===last)return;last=t;var r=t.getBoundingClientRect();Object.assign(hl.style,{top:r.top+'px',left:r.left+'px',width:r.width+'px',height:r.height+'px',display:'block'});panel.innerHTML=rp(t);var OFFSET=16,PW=300,PH=340,left=e.clientX+OFFSET,top=e.clientY+OFFSET;if(left+PW>window.innerWidth-8)left=e.clientX-PW-OFFSET;if(top+PH>window.innerHeight-8)top=e.clientY-PH-OFFSET;if(left<8)left=8;if(top<8)top=8;Object.assign(panel.style,{left:left+'px',top:top+'px',display:'block'});},{passive:true});document.addEventListener('mouseleave',function(){panel.style.display='none';hl.style.display='none';last=null;},{passive:true});})()";
+
+  var bookmarkletLink = document.getElementById('bookmarklet-link');
+  if (bookmarkletLink) {
+    bookmarkletLink.href = 'javascript:' + encodeURIComponent(bookmarkletCode);
+  }
+})();
+</script>
+</body>
+</html>

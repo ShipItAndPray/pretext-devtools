@@ -1,0 +1,37 @@
+{
+  "name": "@shipitandpray/pretext-devtools",
+  "version": "0.1.0",
+  "description": "Overlay Pretext text measurements on any webpage. See predicted vs actual dimensions.",
+  "author": "ShipItAndPray",
+  "license": "MIT",
+  "homepage": "https://shipitandpray.github.io/pretext-devtools/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShipItAndPray/pretext-devtools.git"
+  },
+  "keywords": ["pretext", "devtools", "text-measurement", "typography", "overlay", "bookmarklet"],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "bookmarklet.js"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "@vitest/coverage-v8": "^1.4.0",
+    "happy-dom": "^14.0.0"
+  }
+}
